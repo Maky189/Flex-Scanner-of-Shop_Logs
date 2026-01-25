@@ -17,6 +17,7 @@ User users[MAX_USERS];
 int user_count = 0;
 int current_user = 0;
 int lexical_errors = 0;
+int linha = 1;
 
 User* find_or_add_user(int id) {
     for(int i = 0; i < user_count; i++) {
@@ -32,24 +33,18 @@ User* find_or_add_user(int id) {
         users[user_count].total_spent = 0.0;
         return &users[user_count++];
     }
-    return NULL; // Should not happen
+    return NULL;
 }
-
 %}
 
 TIMESTAMP   [0-9]{4}-[0-9]{2}-[0-9]{2}[ ]+[0-9]{2}:[0-9]{2}:[0-9]{2}
+ID          USER=[0-9]+
 INVALID_ID  USER=[^0-9][a-zA-Z0-9]*
-ID      USER=[0-9]+
 VALOR       [0-9]+(\.[0-9][0-9])?
 
 %%
 
 {TIMESTAMP} { }
-
-{INVALID_ID} {
-    current_user = 0;
-    lexical_errors++;
-}
 
 {ID} {
     sscanf(yytext, "USER=%d", &current_user);
@@ -76,6 +71,10 @@ CHECKOUT {
     }
 }
 
+ITEM=[a-zA-Z0-9_]+ { }
+
+PRECO={VALOR} { }
+
 TOTAL={VALOR} {
     double valor;
     sscanf(yytext, "TOTAL=%lf", &valor);
@@ -85,20 +84,50 @@ TOTAL={VALOR} {
     }
 }
 
-ITEM=[a-zA-Z0-9_]+ { }
+{INVALID_ID} {
+    printf("Erro lexico (linha %d): USER invalido -> %s\n", linha, yytext);
+    lexical_errors++;
+    current_user = 0;
+}
 
-PRECO={VALOR} { }
+(LOGON|BUY|PAY) {
+    printf("Erro lexico (linha %d): acao invalida -> %s\n", linha, yytext);
+    lexical_errors++;
+}
 
-\n      { }
+PRECO=[^ \n]+ {
+    printf("Erro lexico (linha %d): PRECO invalido -> %s\n", linha, yytext);
+    lexical_errors++;
+}
+
+TOTAL=[^ \n]+ {
+    printf("Erro lexico (linha %d): TOTAL invalido -> %s\n", linha, yytext);
+    lexical_errors++;
+}
+
+[0-9]{4}-[^ ]+ {
+    printf("Erro lexico (linha %d): Timestamp malformado -> %s\n", linha, yytext);
+    lexical_errors++;
+}
+
+[A-Z]+=[^ \n]+ {
+    printf("Erro lexico (linha %d): Campo invalido -> %s\n", linha, yytext);
+    lexical_errors++;
+}
+
+\n      { linha++; }
 [ \t]+  { }
 
 . {
-    if(*yytext != ' ' && *yytext != '\t' && *yytext != '\n') {
-        lexical_errors++;
-    }
+    printf("Erro lexico (linha %d): simbolo invalido -> %s\n", linha, yytext);
+    lexical_errors++;
 }
 
 %%
+
+int yywrap() {
+    return 1;
+}
 
 int main(int argc, char *argv[]) {
 
@@ -117,17 +146,7 @@ int main(int argc, char *argv[]) {
     yylex();
     fclose(f);
 
-    for(int i = 0; i < user_count; i++) {
-        printf("UTILIZADOR %d\n", users[i].id);
-        printf("   Logins: %d\n", users[i].logins);
-        printf("   Produtos adicionados: %d\n", users[i].adds);
-        printf("   Compras: %d\n", users[i].checkouts);
-        printf("   Total gastos: %.2f\n", users[i].total_spent);
-    }
-
-    if(lexical_errors > 0) {
-        // printf("Erros lexicos detectados: %d\n", lexical_errors);
-    }
+    printf("\nTotal de erros léxicos: %d\n", lexical_errors);
 
     return 0;
 }
