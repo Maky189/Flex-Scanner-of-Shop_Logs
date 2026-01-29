@@ -5,6 +5,8 @@
 
 #define MAX_USERS 1000
 
+//Estrutura de Users
+
 typedef struct {
     int id;
     int logins;
@@ -13,12 +15,15 @@ typedef struct {
     double total_spent;
 } User;
 
+
+//Lista de Users
 User users[MAX_USERS];
 int user_count = 0;
 int current_user = 0;
 int lexical_errors = 0;
 int linha = 1;
 
+//Metodo de encontrar ou adicionar utilizador caso nao encontrado
 User* find_or_add_user(int id) {
     for(int i = 0; i < user_count; i++) {
         if(users[i].id == id) {
@@ -37,6 +42,7 @@ User* find_or_add_user(int id) {
 }
 %}
 
+ //Expressoes regulares
 TIMESTAMP   [0-9]{4}-[0-9]{2}-[0-9]{2}[ ]+[0-9]{2}:[0-9]{2}:[0-9]{2}
 ID          USER=[0-9]+
 INVALID_ID  USER=[^0-9][a-zA-Z0-9]*
@@ -44,6 +50,7 @@ VALOR       [0-9]+(\.[0-9][0-9])?
 
 %%
 
+ //Tabela de simbolos, realiza contagens dos simbolos
 {TIMESTAMP} { }
 
 {ID} {
@@ -136,12 +143,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    //Carregar o ficheiro
     FILE *f = fopen(argv[1], "r");
     if(!f) {
         perror("Erro ao abrir ficheiro");
         return 1;
     }
-
+    
+    //Inicia o processo e procura por erros lexicos
     yyin = f;
     yylex();
     fclose(f);
